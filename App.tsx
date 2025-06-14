@@ -1,6 +1,4 @@
 
-// The new, complete App.tsx file
-
 import React, { useState, useCallback } from 'react';
 import { 
   TripDetails, AppTripChecklist, ChecklistType, MovingDetails, AppMovingChecklist,
@@ -24,7 +22,6 @@ import AboutUsPage from './components/AboutUsPage';
 import TermsOfServicePage from './components/TermsOfServicePage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import ContactUsPage from './components/ContactUsPage';
-import { downloadChecklistPdf } from './services/pdfService'; // Import PDF Service
 import { Analytics } from '@vercel/analytics/react';
 
 // Helper function to call our new secure API endpoint.
@@ -99,48 +96,75 @@ const App: React.FC = () => {
     setProjectGoalChecklist(null);
   };
 
+  // --- FIXED HANDLER FUNCTIONS ---
   const handleGenerateTripChecklist = useCallback(async (details: TripDetails) => {
     setIsLoading(true); setError(null); setTripChecklist(null);
     try {
-      // For App.tsx, we expect the backend to return the final transformed structure.
-      // The generatePackingList function in geminiService.ts calls the backend and then transforms.
-      // So, the data received here should already be AppTripChecklist.
-      const transformedList = await generatePackingList(details);
+      const generatedData = await generatePackingList(details);
+      const transformedList = generatedData.categories.map((category: any) => ({
+        name: category.name,
+        items: category.items.map((item: any) => ({ id: crypto.randomUUID(), itemName: item.itemName, packed: false })),
+      }));
       setTripChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
+
   const handleGenerateMovingChecklist = useCallback(async (details: MovingDetails) => {
     setIsLoading(true); setError(null); setMovingChecklist(null);
     try {
-      const transformedList = await generateMovingChecklist(details);
+      const generatedData = await generateMovingChecklist(details);
+      const transformedList = generatedData.timeline.map((week: any) => ({
+        week: week.week,
+        tasks: week.tasks.map((task: any) => ({ id: crypto.randomUUID(), taskName: task.taskName, notes: task.notes, completed: false })),
+      }));
       setMovingChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
+
   const handleGeneratePetChecklist = useCallback(async (details: PetDetails) => {
     setIsLoading(true); setError(null); setPetChecklist(null);
     try {
-      const transformedList = await generatePetStarterKit(details);
+      const generatedData = await generatePetStarterKit(details);
+      const transformedList = generatedData.sections.map((section: any) => ({
+        sectionName: section.sectionName,
+        items: section.items.map((item: any) => ({ id: crypto.randomUUID(), itemName: item.itemName, notes: item.notes, acquired: false })),
+      }));
       setPetChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
+
   const handleGenerateEventChecklist = useCallback(async (details: EventDetails) => {
     setIsLoading(true); setError(null); setEventChecklist(null);
     try {
-      const transformedList = await generateEventChecklist(details);
+      const generatedData = await generateEventChecklist(details);
+      const transformedList = generatedData.eventPlanSections.map((section: any) => ({
+        sectionName: section.sectionName,
+        tasks: section.tasks.map((task: any) => ({ id: crypto.randomUUID(), taskName: task.taskName, notes: task.notes, completed: false })),
+      }));
       setEventChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
+
   const handleGenerateNewBeginningsChecklist = useCallback(async (details: NewBeginningsDetails) => {
     setIsLoading(true); setError(null); setNewBeginningsChecklist(null);
     try {
-      const transformedList = await generateNewBeginningsChecklist(details);
+      const generatedData = await generateNewBeginningsChecklist(details);
+      const transformedList = generatedData.actionPlanSections.map((section: any) => ({
+        sectionName: section.sectionName,
+        tasks: section.tasks.map((task: any) => ({ id: crypto.randomUUID(), taskName: task.taskName, notes: task.notes, completed: false })),
+      }));
       setNewBeginningsChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
+
   const handleGenerateProjectGoalChecklist = useCallback(async (details: ProjectGoalDetails) => {
     setIsLoading(true); setError(null); setProjectGoalChecklist(null);
     try {
-      const transformedList = await generateProjectGoalChecklist(details);
+      const generatedData = await generateProjectGoalChecklist(details);
+      const transformedList = generatedData.projectPhases.map((phase: any) => ({
+        phaseName: phase.phaseName,
+        tasks: phase.tasks.map((task: any) => ({ id: crypto.randomUUID(), taskName: task.taskName, details: task.details, completed: false })),
+      }));
       setProjectGoalChecklist(transformedList);
     } catch (err) { setError(err instanceof Error ? err.message : 'An error occurred.'); } finally { setIsLoading(false); }
   }, []);
@@ -155,7 +179,9 @@ const App: React.FC = () => {
   const switchView = (type: ChecklistType | StaticPageType) => { 
     setActiveView(type); 
     setError(null); 
-    clearAllChecklistData();
+    if (isChecklistTypeActive(type)) {
+      clearAllChecklistData();
+    }
   };
   
   const getButtonClass = (type: ChecklistType) => `px-3 py-2 sm:px-4 sm:py-3 rounded-lg font-semibold transition-all duration-200 ease-in-out text-xs sm:text-sm ${activeView === type ? 'bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-lg scale-105' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`;
@@ -181,23 +207,13 @@ const App: React.FC = () => {
     }
   }, [activeView, tripChecklist, movingChecklist, petChecklist, eventChecklist, newBeginningsChecklist, projectGoalChecklist]);
 
-  const handleDownloadPdf = useCallback(() => {
-    const data = currentActiveChecklistData();
-    if (data && activeView && isChecklistTypeActive(activeView)) {
-      const title = checklistTitles[activeView as ChecklistType];
-      downloadChecklistPdf(data, activeView as ChecklistType, title);
-    } else {
-      console.warn("No active checklist data to download or view is not a checklist type.");
-      alert("No checklist available to download.");
-    }
-  }, [activeView, currentActiveChecklistData]);
-
+  // Note: PDF Download functionality is removed to simplify deployment, as it requires a more complex backend setup.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 py-8 px-2 sm:px-4 lg:px-8 flex flex-col">
       <div className="max-w-4xl mx-auto w-full flex-grow">
         <header className="text-center mb-10">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 to-purple-500 mb-3">GenChecklist</h1>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 to-purple-500 mb-3 cursor-pointer" onClick={() => switchView(ChecklistType.TRIP)}>GenChecklist</h1>
             <p className="text-lg sm:text-xl text-slate-400">Your Personal Checklist Generator</p>
         </header>
         <nav className="mb-10 flex flex-wrap justify-center gap-1 sm:gap-2">
@@ -230,12 +246,12 @@ const App: React.FC = () => {
         {error && <div className="bg-red-700/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg my-10 shadow-lg" role="alert"><strong className="font-bold text-red-100">Oops! </strong><span className="block sm:inline ml-2">{error}</span></div>}
         
         {/* Render Checklist Displays */}
-        {activeView === ChecklistType.TRIP && tripChecklist && !isLoading && !error && <ChecklistDisplay checklist={tripChecklist} onTogglePacked={handleTogglePacked} onDownloadPdf={handleDownloadPdf} />}
-        {activeView === ChecklistType.MOVING && movingChecklist && !isLoading && !error && <MovingChecklistDisplay checklist={movingChecklist} onToggleTaskCompleted={handleToggleTaskCompleted} onDownloadPdf={handleDownloadPdf} />}
-        {activeView === ChecklistType.PET && petChecklist && !isLoading && !error && <PetChecklistDisplay checklist={petChecklist} onToggleAcquired={handleTogglePetItemAcquired} onDownloadPdf={handleDownloadPdf} />}
-        {activeView === ChecklistType.EVENT && eventChecklist && !isLoading && !error && <EventChecklistDisplay checklist={eventChecklist} onToggleTaskCompleted={handleToggleEventTaskCompleted} onDownloadPdf={handleDownloadPdf} />}
-        {activeView === ChecklistType.NEW_BEGINNINGS && newBeginningsChecklist && !isLoading && !error && <NewBeginningsChecklistDisplay checklist={newBeginningsChecklist} onToggleTaskCompleted={handleToggleNewBeginningsTaskCompleted} onDownloadPdf={handleDownloadPdf} />}
-        {activeView === ChecklistType.PROJECT_GOAL && projectGoalChecklist && !isLoading && !error && <ProjectGoalChecklistDisplay checklist={projectGoalChecklist} onToggleTaskCompleted={handleToggleProjectGoalTaskCompleted} onDownloadPdf={handleDownloadPdf} />}
+        {activeView === ChecklistType.TRIP && tripChecklist && !isLoading && !error && <ChecklistDisplay checklist={tripChecklist} onTogglePacked={handleTogglePacked} />}
+        {activeView === ChecklistType.MOVING && movingChecklist && !isLoading && !error && <MovingChecklistDisplay checklist={movingChecklist} onToggleTaskCompleted={handleToggleTaskCompleted} />}
+        {activeView === ChecklistType.PET && petChecklist && !isLoading && !error && <PetChecklistDisplay checklist={petChecklist} onToggleAcquired={handleTogglePetItemAcquired} />}
+        {activeView === ChecklistType.EVENT && eventChecklist && !isLoading && !error && <EventChecklistDisplay checklist={eventChecklist} onToggleTaskCompleted={handleToggleEventTaskCompleted} />}
+        {activeView === ChecklistType.NEW_BEGINNINGS && newBeginningsChecklist && !isLoading && !error && <NewBeginningsChecklistDisplay checklist={newBeginningsChecklist} onToggleTaskCompleted={handleToggleNewBeginningsTaskCompleted} />}
+        {activeView === ChecklistType.PROJECT_GOAL && projectGoalChecklist && !isLoading && !error && <ProjectGoalChecklistDisplay checklist={projectGoalChecklist} onToggleTaskCompleted={handleToggleProjectGoalTaskCompleted} />}
       
         {/* Render Static Pages */}
         {activeView === StaticPageType.ABOUT && <AboutUsPage />}
