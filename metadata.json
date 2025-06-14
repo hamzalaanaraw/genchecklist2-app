@@ -1,0 +1,6 @@
+{
+  "name": "GenChecklist",
+  "description": "An interactive tool for customized checklists. Generates: 1. Perfect Trip Packer, 2. Ultimate Moving Checklist, 3. New Pet Starter Kit, 4. Event & Party Planner, 5. New Beginnings Action Plan, 6. Project & Goal Achievement Plan.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
