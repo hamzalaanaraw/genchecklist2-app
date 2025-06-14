@@ -260,6 +260,7 @@ const App: React.FC = () => {
         </div>
         <p className="mt-4">GenChecklist &copy; {new Date().getFullYear()}</p>
       </footer>
+      <Analytics />
     </div>
   );
 };
