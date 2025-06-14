@@ -25,7 +25,7 @@ import TermsOfServicePage from './components/TermsOfServicePage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import ContactUsPage from './components/ContactUsPage';
 import { downloadChecklistPdf } from './services/pdfService'; // Import PDF Service
-import { Analytics } from '@vercel/analytics/react';
+import { Analytics } from '@vercel/analytics/next';
 
 // Helper function to call our new secure API endpoint.
 async function generateChecklistFromApi(prompt: string) {
